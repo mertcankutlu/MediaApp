@@ -1,4 +1,4 @@
-name: Build APK
+name: Build MediaApp APK
 
 on:
   push:
