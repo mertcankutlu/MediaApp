@@ -1,8 +1,13 @@
-name: Build MediaApp APK
+name: Build or Test MediaApp
 
 on:
-  # Otomatik derlemeyi kapattık. Sadece Actions sekmesinden manuel tetiklenecek.
   workflow_dispatch:
+    inputs:
+      build_apk:
+        description: 'APK dosyası üretilsin mi?'
+        required: true
+        type: boolean
+        default: false
 
 jobs:
   build:
@@ -23,10 +28,19 @@ jobs:
       with:
         gradle-version: 8.5
 
+    # Sadece kodları ve derlemeyi test eder (Hızlı mod)
+    - name: Kod Kontrolü ve Derleme Testi
+      if: ${{ !inputs.build_apk }}
+      run: gradle compileDebugSources
+
+    # Sadece kutucuk işaretlendiyse tam APK derler
     - name: APK Derle (Debug)
+      if: ${{ inputs.build_apk }}
       run: gradle assembleDebug
 
+    # Sadece APK derlendiyse dosyayı yükler
     - name: APK Dosyasını Yükle
+      if: ${{ inputs.build_apk }}
       uses: actions/upload-artifact@v4
       with:
         name: MediaApp-APK
