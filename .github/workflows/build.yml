@@ -1,8 +1,7 @@
 name: Build MediaApp APK
 
 on:
-  push:
-    branches: [ "**" ]
+  # Otomatik derlemeyi kapattık. Sadece Actions sekmesinden manuel tetiklenecek.
   workflow_dispatch:
 
 jobs:
@@ -32,4 +31,3 @@ jobs:
       with:
         name: MediaApp-APK
         path: app/build/outputs/apk/debug/app-debug.apk
-        
