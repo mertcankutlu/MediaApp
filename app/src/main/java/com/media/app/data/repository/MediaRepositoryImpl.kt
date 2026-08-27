@@ -50,7 +50,8 @@ class MediaRepositoryImpl @Inject constructor(
 
             Result.Success(Unit)
         } catch (e: Exception) {
-            Result.Failure(AppError.DatabaseError.WriteFailed(e.message ?: "Senkronizasyon hatası"))
+            val error: Result<Unit> = Result.Failure(AppError.DatabaseError.WriteFailed(e.message ?: "Senkronizasyon hatası"))
+            error
         }
     }
 }
