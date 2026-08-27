@@ -4,7 +4,7 @@ import com.media.app.core.AppError
 import com.media.app.core.Result
 import com.media.app.data.local.MediaDao
 import com.media.app.data.local.MediaEntity
-import com.media.app.data.local.MediaStoreScanner
+import com.media.app.data.local.MediaSyncEngine
 import com.media.app.domain.model.MediaTrack
 import com.media.app.domain.repository.MediaRepository
 import kotlinx.coroutines.flow.Flow
@@ -15,7 +15,7 @@ import javax.inject.Singleton
 @Singleton
 class MediaRepositoryImpl @Inject constructor(
     private val mediaDao: MediaDao,
-    private val mediaStoreScanner: MediaStoreScanner
+    private val syncEngine: MediaSyncEngine
 ) : MediaRepository {
 
     override fun getLocalMedia(): Flow<List<MediaTrack>> {
@@ -40,15 +40,7 @@ class MediaRepositoryImpl @Inject constructor(
 
     override suspend fun syncWithMediaStore(): Result<Unit> {
         return try {
-            val scannedTracks = mediaStoreScanner.scanAudioFiles()
-            
-            if (scannedTracks.isNotEmpty()) {
-                mediaDao.insertTracks(scannedTracks)
-            }
-
-            val currentValidIds = scannedTracks.map { it.id }
-            mediaDao.deleteRemovedLocalTracks(currentValidIds)
-
+            syncEngine.performReconcile()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(AppError.DatabaseError.WriteFailed(e.message ?: "Senkronizasyon hatası"))
