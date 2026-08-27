@@ -3,6 +3,7 @@ package com.media.app.data.repository
 import com.media.app.core.AppError
 import com.media.app.core.Result
 import com.media.app.data.local.MediaDao
+import com.media.app.data.local.MediaEntity
 import com.media.app.data.local.MediaStoreScanner
 import com.media.app.domain.model.MediaTrack
 import com.media.app.domain.repository.MediaRepository
@@ -18,8 +19,8 @@ class MediaRepositoryImpl @Inject constructor(
 ) : MediaRepository {
 
     override fun getLocalMedia(): Flow<List<MediaTrack>> {
-        return mediaDao.getAllTracksFlow().map { list ->
-            list.map { it.toDomain() }
+        return mediaDao.getAllTracksFlow().map { entities: List<MediaEntity> ->
+            entities.map { entity -> entity.toDomain() }
         }
     }
 
@@ -40,12 +41,10 @@ class MediaRepositoryImpl @Inject constructor(
         return try {
             val scannedTracks = mediaStoreScanner.scanAudioFiles()
             
-            // 1. Yeni veya güncellenen dosyaları Room'a yaz/güncelle
             if (scannedTracks.isNotEmpty()) {
                 mediaDao.insertTracks(scannedTracks)
             }
 
-            // 2. Cihazdan silinmiş dosyaları Room'dan da temizle (Reconciliation)
             val currentValidIds = scannedTracks.map { it.id }
             mediaDao.deleteRemovedLocalTracks(currentValidIds)
 
