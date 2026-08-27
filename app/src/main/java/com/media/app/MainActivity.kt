@@ -76,7 +76,7 @@ fun LocalLibraryScreen(viewModel: PlayerViewModel) {
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (isGranted) {
-            viewModel.syncTracks()
+            viewModel.startObservingStorage()
         }
     }
 
@@ -87,7 +87,7 @@ fun LocalLibraryScreen(viewModel: PlayerViewModel) {
         ) == PackageManager.PERMISSION_GRANTED
 
         if (isGranted) {
-            viewModel.syncTracks()
+            viewModel.startObservingStorage()
         } else {
             permissionLauncher.launch(permissionToRequest)
         }
