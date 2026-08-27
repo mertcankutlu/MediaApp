@@ -19,12 +19,9 @@ class MediaRepositoryImpl @Inject constructor(
 ) : MediaRepository {
 
     override fun getLocalMedia(): Flow<List<MediaTrack>> {
-        return mediaDao.getAllTracksFlow().map { entities ->
-            val domainList = ArrayList<MediaTrack>(entities.size)
-            for (entity in entities) {
-                domainList.add(entity.toDomain())
-            }
-            domainList
+        val tracksFlow: Flow<List<MediaEntity>> = mediaDao.getAllTracksFlow()
+        return tracksFlow.map { entities: List<MediaEntity> ->
+            entities.map { entity: MediaEntity -> entity.toDomain() }
         }
     }
 
@@ -32,12 +29,12 @@ class MediaRepositoryImpl @Inject constructor(
         return try {
             val entity = mediaDao.getTrackById(id)
             if (entity != null) {
-                Result.Success(entity.toDomain())
+                Result.success(entity.toDomain())
             } else {
-                Result.Failure(AppError.DatabaseError.ReadFailed("Parça bulunamadı: $id"))
+                Result.failure(AppError.DatabaseError.ReadFailed("Parça bulunamadı: $id"))
             }
         } catch (e: Exception) {
-            Result.Failure(AppError.DatabaseError.ReadFailed(e.message ?: "Bilinmeyen DB hatası"))
+            Result.failure(AppError.DatabaseError.ReadFailed(e.message ?: "Bilinmeyen DB hatası"))
         }
     }
 
@@ -52,9 +49,9 @@ class MediaRepositoryImpl @Inject constructor(
             val currentValidIds = scannedTracks.map { it.id }
             mediaDao.deleteRemovedLocalTracks(currentValidIds)
 
-            Result.Success(Unit)
+            Result.success(Unit)
         } catch (e: Exception) {
-            Result.Failure(AppError.DatabaseError.WriteFailed(e.message ?: "Senkronizasyon hatası"))
+            Result.failure(AppError.DatabaseError.WriteFailed(e.message ?: "Senkronizasyon hatası"))
         }
     }
 }
