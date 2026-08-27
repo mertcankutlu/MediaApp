@@ -1,12 +1,20 @@
 package com.media.app.di
 
+import com.media.app.data.repository.MediaRepositoryImpl
+import com.media.app.domain.repository.MediaRepository
+import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class RepositoryModule {
-    // İlerleyen fazlarda Data katmanı implementasyonları yazıldıkça 
-    // @Binds fonksiyonları buraya eklenecektir.
+
+    @Binds
+    @Singleton
+    abstract fun bindMediaRepository(
+        mediaRepositoryImpl: MediaRepositoryImpl
+    ): MediaRepository
 }
