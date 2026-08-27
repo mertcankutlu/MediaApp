@@ -3,6 +3,11 @@ package com.media.app.core
 sealed interface Result<out T> {
     data class Success<out T>(val data: T) : Result<T>
     data class Failure(val error: AppError) : Result<Nothing>
+
+    companion object {
+        fun <T> success(data: T): Result<T> = Success(data)
+        fun <T> failure(error: AppError): Result<T> = Failure(error)
+    }
 }
 
 inline fun <T, R> Result<T>.map(transform: (T) -> R): Result<R> {
