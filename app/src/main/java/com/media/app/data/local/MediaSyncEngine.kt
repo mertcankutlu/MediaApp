@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -23,6 +24,7 @@ class MediaSyncEngine @Inject constructor(
 ) {
     private val scope = CoroutineScope(Dispatchers.IO)
     private var debounceJob: Job? = null
+    private val isObserving = AtomicBoolean(false)
 
     private val contentObserver = object : ContentObserver(Handler(Looper.getMainLooper())) {
         override fun onChange(selfChange: Boolean, uri: Uri?) {
@@ -31,24 +33,39 @@ class MediaSyncEngine @Inject constructor(
         }
     }
 
+    @Synchronized
     fun startObserving() {
-        context.contentResolver.registerContentObserver(
-            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-            true,
-            contentObserver
-        )
-        // Başlangıç ilk senkronizasyonu
-        triggerSyncWithDebounce()
+        if (isObserving.compareAndSet(false, true)) {
+            try {
+                context.contentResolver.registerContentObserver(
+                    MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                    true,
+                    contentObserver
+                )
+            } catch (e: SecurityException) {
+                isObserving.set(false)
+                return
+            }
+            triggerSyncWithDebounce()
+        }
     }
 
+    @Synchronized
     fun stopObserving() {
-        context.contentResolver.unregisterContentObserver(contentObserver)
+        if (isObserving.compareAndSet(true, false)) {
+            try {
+                context.contentResolver.unregisterContentObserver(contentObserver)
+            } catch (e: Exception) {
+                // Güvenli unregister
+            }
+            debounceJob?.cancel()
+        }
     }
 
     fun triggerSyncWithDebounce() {
         debounceJob?.cancel()
         debounceJob = scope.launch {
-            delay(500L) // Çoklu dosya işlemlerinde ardışık tetiklemeleri önleyen debounce
+            delay(500L) // UI takılmasını ve peş peşe taramaları engelleyen debounce
             performReconcile()
         }
     }
