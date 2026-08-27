@@ -19,8 +19,12 @@ class MediaRepositoryImpl @Inject constructor(
 ) : MediaRepository {
 
     override fun getLocalMedia(): Flow<List<MediaTrack>> {
-        return mediaDao.getAllTracksFlow().map { entities: List<MediaEntity> ->
-            entities.map { entity -> entity.toDomain() }
+        return mediaDao.getAllTracksFlow().map { entities ->
+            val domainList = ArrayList<MediaTrack>(entities.size)
+            for (entity in entities) {
+                domainList.add(entity.toDomain())
+            }
+            domainList
         }
     }
 
@@ -50,8 +54,7 @@ class MediaRepositoryImpl @Inject constructor(
 
             Result.Success(Unit)
         } catch (e: Exception) {
-            val error: Result<Unit> = Result.Failure(AppError.DatabaseError.WriteFailed(e.message ?: "Senkronizasyon hatası"))
-            error
+            Result.Failure(AppError.DatabaseError.WriteFailed(e.message ?: "Senkronizasyon hatası"))
         }
     }
 }
