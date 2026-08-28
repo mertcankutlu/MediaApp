@@ -7,11 +7,19 @@ import javax.inject.Singleton
 @Singleton
 class PipedInstanceManager @Inject constructor() {
 
+    // Keep a curated fallback set from Piped's current public-instance list.
+    // The first entries are preferred; failed entries enter cooldown.
     private val defaultInstances = listOf(
         "https://pipedapi.kavin.rocks",
-        "https://api.piped.privacydev.net",
         "https://pipedapi.leptons.xyz",
-        "https://piped-api.lunar.icu"
+        "https://pipedapi.nosebs.ru",
+        "https://pipedapi-libre.kavin.rocks",
+        "https://piped-api.privacy.com.de",
+        "https://pipedapi.adminforge.de",
+        "https://api.piped.yt",
+        "https://pipedapi.drgns.space",
+        "https://pipedapi.owo.si",
+        "https://pipedapi.ducks.party"
     )
 
     private val failedInstancesCooldown = ConcurrentHashMap<String, Long>()
@@ -19,22 +27,27 @@ class PipedInstanceManager @Inject constructor() {
 
     fun getInstanceCount(): Int = defaultInstances.size
 
-    fun getHealthyBaseUrl(): String {
+    /**
+     * Returns every currently healthy instance in deterministic priority order.
+     * Each call returns a snapshot, so one request can try each instance at most once.
+     */
+    fun getHealthyBaseUrls(): List<String> {
         val now = System.currentTimeMillis()
 
-        // Avoid ConcurrentHashMap.entries.removeIf() here. Using the map's
-        // conditional remove keeps this compatible with older Android runtimes
-        // and is safe if another coroutine reports a failure concurrently.
         failedInstancesCooldown.forEach { (url, expiresAt) ->
             if (now >= expiresAt) {
                 failedInstancesCooldown.remove(url, expiresAt)
             }
         }
 
-        return defaultInstances.firstOrNull { url ->
+        return defaultInstances.filter { url ->
             !failedInstancesCooldown.containsKey(url)
-        } ?: defaultInstances.first()
+        }
     }
+
+    /** Backward-compatible single-instance accessor. */
+    fun getHealthyBaseUrl(): String =
+        getHealthyBaseUrls().firstOrNull() ?: defaultInstances.first()
 
     fun reportFailure(baseUrl: String) {
         val cleanUrl = baseUrl.trimEnd('/')
