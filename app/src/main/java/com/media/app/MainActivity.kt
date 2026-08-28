@@ -188,13 +188,14 @@ fun MainScreen(viewModel: PlayerViewModel) {
                 }
             }
         } else {
-            OutlinedTextField(
+                        OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { viewModel.onSearchQueryChanged(it) },
                 label = { Text("Şarkı veya Sanatçı Ara") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
+
 
             Spacer(modifier = Modifier.height(8.dp))
 
