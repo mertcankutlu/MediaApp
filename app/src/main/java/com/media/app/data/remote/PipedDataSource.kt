@@ -17,7 +17,15 @@ class PipedDataSource @Inject constructor(
         try {
             val response = pipedApiService.search(query = query)
             val tracks = response.mapNotNull { dto ->
-                val videoId = dto.url?.substringAfter("watch?v=") ?: return@mapNotNull null
+                val rawUrl = dto.url ?: return@mapNotNull null
+                val videoId = when {
+                    rawUrl.contains("watch?v=") -> rawUrl.substringAfter("watch?v=")
+                    rawUrl.startsWith("/") -> rawUrl.removePrefix("/")
+                    else -> rawUrl
+                }
+                
+                if (videoId.isBlank()) return@mapNotNull null
+
                 MediaTrack(
                     id = videoId,
                     title = dto.title ?: "Bilinmeyen Başlık",
@@ -27,7 +35,8 @@ class PipedDataSource @Inject constructor(
                     sourceUrl = null,
                     isOffline = false
                 )
-            }
+            }.distinctBy { it.id } // LazyColumn çökmesini önleyen ID tekilleştirme
+
             Result.success(tracks)
         } catch (e: Exception) {
             Result.failure(AppError.NetworkError.ServerError("Piped arama hatası: ${e.message}"))
