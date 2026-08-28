@@ -16,13 +16,17 @@ class PipedDataSource @Inject constructor(
     private val instanceManager: PipedInstanceManager
 ) {
     suspend fun searchTracks(query: String): Result<List<MediaTrack>> = withContext(Dispatchers.IO) {
-        val totalInstances = instanceManager.getInstanceCount()
         var lastErrorMessage = "Bilinmeyen hata"
+        val candidates = instanceManager.getHealthyBaseUrls()
 
-        for (i in 0 until totalInstances) {
-            val baseUrl = instanceManager.getHealthyBaseUrl()
+        if (candidates.isEmpty()) {
+            return@withContext Result.failure(
+                AppError.NetworkError.ServerError("Geçici olarak kullanılabilir Piped sunucusu yok")
+            )
+        }
+
+        for (baseUrl in candidates) {
             val endpoint = "$baseUrl/search"
-
             try {
                 val response = pipedApiService.search(fullUrl = endpoint, query = query)
                 val tracks = response.mapNotNull { dto ->
@@ -57,13 +61,17 @@ class PipedDataSource @Inject constructor(
     }
 
     suspend fun resolveAudioUrl(videoId: String): Result<String> = withContext(Dispatchers.IO) {
-        val totalInstances = instanceManager.getInstanceCount()
         var lastErrorMessage = "Bilinmeyen hata"
+        val candidates = instanceManager.getHealthyBaseUrls()
 
-        for (i in 0 until totalInstances) {
-            val baseUrl = instanceManager.getHealthyBaseUrl()
+        if (candidates.isEmpty()) {
+            return@withContext Result.failure(
+                AppError.NetworkError.ServerError("Geçici olarak kullanılabilir Piped sunucusu yok")
+            )
+        }
+
+        for (baseUrl in candidates) {
             val endpoint = "$baseUrl/streams"
-
             try {
                 val response = pipedApiService.getStreams(fullUrl = endpoint, videoId = videoId)
                 val audioStream = response.audioStreams
@@ -72,9 +80,12 @@ class PipedDataSource @Inject constructor(
 
                 if (audioStream?.url != null) {
                     return@withContext Result.success(audioStream.url)
-                } else {
-                    instanceManager.reportFailure(baseUrl)
                 }
+
+                // A successful HTTP response with no audio stream is a content-level
+                // result, not proof that the server itself is unhealthy. Try the next
+                // instance without poisoning the current instance's cooldown state.
+                lastErrorMessage = "Ses akışı bulunamadı"
             } catch (e: Exception) {
                 lastErrorMessage = e.message ?: "Akış hatası"
                 instanceManager.reportFailure(baseUrl)
