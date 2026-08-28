@@ -10,6 +10,7 @@ import com.media.app.domain.usecase.SearchTracksUseCase
 import com.media.app.playback.MediaControllerManager
 import com.media.app.playback.PlayerState
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,6 +19,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @HiltViewModel
@@ -62,16 +64,24 @@ class PlayerViewModel @Inject constructor(
         }
 
         searchJob = viewModelScope.launch {
-            delay(500L) // Kullanıcı yazarken istek yağmurunu önleyen debounce
+            delay(600L) // Kullanıcı yazarken bekleme süresi
             _isSearching.value = true
             _errorMessage.value = null
 
-            when (val result = searchTracksUseCase(query)) {
+            val result = withContext(Dispatchers.IO) {
+                try {
+                    searchTracksUseCase(query)
+                } catch (e: Exception) {
+                    Result.failure(com.media.app.core.AppError.NetworkError.ServerError(e.message ?: "Arama hatası"))
+                }
+            }
+
+            when (result) {
                 is Result.Success -> {
                     _searchResults.value = result.data
                 }
                 is Result.Failure -> {
-                    _errorMessage.value = "Arama başarısız oldu."
+                    _errorMessage.value = "Sunuculardan yanıt alınamadı. Tekrar deneyin."
                 }
             }
             _isSearching.value = false
@@ -81,7 +91,10 @@ class PlayerViewModel @Inject constructor(
     fun playRemoteTrack(track: MediaTrack) {
         viewModelScope.launch {
             _errorMessage.value = null
-            when (val resolveResult = mediaRepository.resolveStreamUrl(track.id)) {
+            val resolveResult = withContext(Dispatchers.IO) {
+                mediaRepository.resolveStreamUrl(track.id)
+            }
+            when (resolveResult) {
                 is Result.Success -> {
                     val playableTrack = track.copy(sourceUrl = resolveResult.data)
                     mediaControllerManager.playTrack(playableTrack)
