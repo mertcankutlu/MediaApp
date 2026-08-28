@@ -23,7 +23,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -50,17 +49,13 @@ import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-
     private val playerViewModel: PlayerViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             MaterialTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
+                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     MainScreen(viewModel = playerViewModel)
                 }
             }
@@ -81,154 +76,75 @@ fun MainScreen(viewModel: PlayerViewModel) {
     val searchQuery by viewModel.searchQuery.collectAsState()
     val isSearching by viewModel.isSearching.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
-
     var selectedTabIndex by remember { mutableIntStateOf(0) }
 
-    val permissionToRequest = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        Manifest.permission.READ_MEDIA_AUDIO
-    } else {
-        Manifest.permission.READ_EXTERNAL_STORAGE
-    }
-
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
+    val permissionToRequest = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) Manifest.permission.READ_MEDIA_AUDIO else Manifest.permission.READ_EXTERNAL_STORAGE
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
         if (isGranted) viewModel.startObservingStorage()
     }
 
     LaunchedEffect(Unit) {
-        val isGranted = ContextCompat.checkSelfPermission(
-            context,
-            permissionToRequest
-        ) == PackageManager.PERMISSION_GRANTED
-
-        if (isGranted) viewModel.startObservingStorage()
-        else permissionLauncher.launch(permissionToRequest)
+        val isGranted = ContextCompat.checkSelfPermission(context, permissionToRequest) == PackageManager.PERMISSION_GRANTED
+        if (isGranted) viewModel.startObservingStorage() else permissionLauncher.launch(permissionToRequest)
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        Text(
-            text = "MediaApp (Faz 3 Entegre)",
-            style = MaterialTheme.typography.titleLarge
-        )
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        Text("MediaApp (Faz 3 Entegre)", style = MaterialTheme.typography.titleLarge)
 
         if (lastCrash != null) {
             Spacer(modifier = Modifier.height(8.dp))
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
-            ) {
+            Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
                 Column(modifier = Modifier.padding(10.dp)) {
-                    Text(
-                        text = "Son çalışma sırasında yakalanan crash",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onErrorContainer
-                    )
-                    Text(
-                        text = "Thread: ${lastCrashThread ?: "bilinmiyor"}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onErrorContainer
-                    )
-                    Text(
-                        text = lastCrash,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onErrorContainer
-                    )
+                    Text("Son çalışma sırasında yakalanan crash", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onErrorContainer)
+                    Text("Thread: ${lastCrashThread ?: "bilinmiyor"}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer)
+                    Text(lastCrash, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer)
                     Spacer(modifier = Modifier.height(6.dp))
-                    Button(onClick = { MediaApplication.clearLastCrash(application) }) {
-                        Text("Crash kaydını temizle")
-                    }
+                    Button(onClick = { MediaApplication.clearLastCrash(application) }) { Text("Crash kaydını temizle") }
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(12.dp))
-
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-        ) {
+        Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
             Column(modifier = Modifier.padding(12.dp)) {
-                Text(text = "Çalan: ${playerState.currentTrack?.title ?: "Yok"}")
-                Text(text = "Sanatçı: ${playerState.currentTrack?.artist ?: "-"}")
-
-                if (errorMessage != null) {
-                    Text(
-                        text = errorMessage ?: "",
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-
+                Text("Çalan: ${playerState.currentTrack?.title ?: "Yok"}")
+                Text("Sanatçı: ${playerState.currentTrack?.artist ?: "-"}")
+                if (errorMessage != null) Text(errorMessage ?: "", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Button(onClick = { viewModel.togglePlayPause() }) {
-                        Text(if (playerState.isPlaying) "Duraklat" else "Oynat")
-                    }
-                    if (selectedTabIndex == 0) {
-                        Button(onClick = { viewModel.syncTracks() }) {
-                            Text("Yeniden Tara")
-                        }
-                    }
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Button(onClick = { viewModel.togglePlayPause() }) { Text(if (playerState.isPlaying) "Duraklat" else "Oynat") }
+                    if (selectedTabIndex == 0) Button(onClick = { viewModel.syncTracks() }) { Text("Yeniden Tara") }
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(12.dp))
-
         TabRow(selectedTabIndex = selectedTabIndex) {
-            Tab(
-                selected = selectedTabIndex == 0,
-                onClick = { selectedTabIndex = 0 },
-                text = { Text("Yerel Kütüphane") }
-            )
-            Tab(
-                selected = selectedTabIndex == 1,
-                onClick = { selectedTabIndex = 1 },
-                text = { Text("Uzak Arama (Piped)") }
-            )
+            Tab(selected = selectedTabIndex == 0, onClick = { selectedTabIndex = 0 }, text = { Text("Yerel Kütüphane") })
+            Tab(selected = selectedTabIndex == 1, onClick = { selectedTabIndex = 1 }, text = { Text("Uzak Arama (Piped)") })
         }
-
         Spacer(modifier = Modifier.height(12.dp))
 
         if (selectedTabIndex == 0) {
-            Text(
-                text = "Cihazdaki Parçalar (${localTracks.size})",
-                style = MaterialTheme.typography.titleMedium
-            )
+            Text("Cihazdaki Parçalar (${localTracks.size})", style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(8.dp))
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 items(localTracks, key = { it.id }) { track ->
-                    TrackItem(track = track, onTrackClick = { viewModel.playTrack(track) })
+                    TrackItem(track, onTrackClick = { viewModel.playTrack(track) })
                     Divider()
                 }
             }
         } else {
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { viewModel.onSearchQueryChanged(it) },
-                label = { Text("Şarkı veya Sanatçı Ara") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
-
+            OutlinedTextField(value = searchQuery, onValueChange = { viewModel.onSearchQueryChanged(it) }, label = { Text("Şarkı veya Sanatçı Ara") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
             Spacer(modifier = Modifier.height(8.dp))
 
-            if (isSearching) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
-            }
+            // The device crash points directly into Material3 CircularProgressIndicator's
+            // animation/keyframes path. Keep the search screen free of that code path.
+            if (isSearching) Text("Aranıyor...", style = MaterialTheme.typography.bodyMedium)
 
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 items(searchResults, key = { track -> track.id }) { track ->
-                    TrackItem(track = track, onTrackClick = { viewModel.playRemoteTrack(track) })
+                    TrackItem(track, onTrackClick = { viewModel.playRemoteTrack(track) })
                     Divider()
                 }
             }
@@ -237,21 +153,9 @@ fun MainScreen(viewModel: PlayerViewModel) {
 }
 
 @Composable
-fun TrackItem(
-    track: MediaTrack,
-    onTrackClick: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onTrackClick() }
-            .padding(vertical = 10.dp, horizontal = 4.dp)
-    ) {
-        Text(text = track.title, style = MaterialTheme.typography.bodyLarge)
-        Text(
-            text = "${track.artist} • ${track.durationSeconds} sn",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+fun TrackItem(track: MediaTrack, onTrackClick: () -> Unit) {
+    Column(modifier = Modifier.fillMaxWidth().clickable { onTrackClick() }.padding(vertical = 10.dp, horizontal = 4.dp)) {
+        Text(track.title, style = MaterialTheme.typography.bodyLarge)
+        Text("${track.artist} • ${track.durationSeconds} sn", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
