@@ -2,6 +2,11 @@ package com.media.app.data.remote.dto
 
 import com.google.gson.annotations.SerializedName
 
+data class PipedSearchResponseDto(
+    @SerializedName("items") val items: List<PipedSearchResultDto>?,
+    @SerializedName("nextpage") val nextPage: String?
+)
+
 data class PipedSearchResultDto(
     @SerializedName("url") val url: String?,
     @SerializedName("title") val title: String?,
