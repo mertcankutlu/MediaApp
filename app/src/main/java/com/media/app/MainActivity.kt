@@ -202,8 +202,8 @@ fun MainScreen(viewModel: PlayerViewModel) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
             }
 
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
-                items(searchResults, key = { it.id }) { track ->
+                        LazyColumn(modifier = Modifier.fillMaxSize()) {
+                items(searchResults, key = { it.id + "_" + searchResults.indexOf(it) }) { track ->
                     TrackItem(
                         track = track,
                         onTrackClick = { viewModel.playRemoteTrack(track) }
