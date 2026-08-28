@@ -72,6 +72,9 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainScreen(viewModel: PlayerViewModel) {
     val context = LocalContext.current
+    val application = context.applicationContext as MediaApplication
+    val lastCrash = remember { MediaApplication.lastCrash(application) }
+    val lastCrashThread = remember { MediaApplication.lastCrashThread(application) }
     val playerState by viewModel.playerState.collectAsState()
     val localTracks by viewModel.localTracks.collectAsState()
     val searchResults by viewModel.searchResults.collectAsState()
@@ -90,9 +93,7 @@ fun MainScreen(viewModel: PlayerViewModel) {
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
-        if (isGranted) {
-            viewModel.startObservingStorage()
-        }
+        if (isGranted) viewModel.startObservingStorage()
     }
 
     LaunchedEffect(Unit) {
@@ -101,11 +102,8 @@ fun MainScreen(viewModel: PlayerViewModel) {
             permissionToRequest
         ) == PackageManager.PERMISSION_GRANTED
 
-        if (isGranted) {
-            viewModel.startObservingStorage()
-        } else {
-            permissionLauncher.launch(permissionToRequest)
-        }
+        if (isGranted) viewModel.startObservingStorage()
+        else permissionLauncher.launch(permissionToRequest)
     }
 
     Column(
@@ -118,9 +116,38 @@ fun MainScreen(viewModel: PlayerViewModel) {
             style = MaterialTheme.typography.titleLarge
         )
 
+        if (lastCrash != null) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+            ) {
+                Column(modifier = Modifier.padding(10.dp)) {
+                    Text(
+                        text = "Son çalışma sırasında yakalanan crash",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                    Text(
+                        text = "Thread: ${lastCrashThread ?: "bilinmiyor"}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                    Text(
+                        text = lastCrash,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Button(onClick = { MediaApplication.clearLastCrash(application) }) {
+                        Text("Crash kaydını temizle")
+                    }
+                }
+            }
+        }
+
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Mini Oynatıcı Alanı
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
@@ -128,7 +155,7 @@ fun MainScreen(viewModel: PlayerViewModel) {
             Column(modifier = Modifier.padding(12.dp)) {
                 Text(text = "Çalan: ${playerState.currentTrack?.title ?: "Yok"}")
                 Text(text = "Sanatçı: ${playerState.currentTrack?.artist ?: "-"}")
-                
+
                 if (errorMessage != null) {
                     Text(
                         text = errorMessage ?: "",
@@ -180,15 +207,12 @@ fun MainScreen(viewModel: PlayerViewModel) {
             Spacer(modifier = Modifier.height(8.dp))
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 items(localTracks, key = { it.id }) { track ->
-                    TrackItem(
-                        track = track,
-                        onTrackClick = { viewModel.playTrack(track) }
-                    )
+                    TrackItem(track = track, onTrackClick = { viewModel.playTrack(track) })
                     Divider()
                 }
             }
         } else {
-                        OutlinedTextField(
+            OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { viewModel.onSearchQueryChanged(it) },
                 label = { Text("Şarkı veya Sanatçı Ara") },
@@ -196,19 +220,15 @@ fun MainScreen(viewModel: PlayerViewModel) {
                 singleLine = true
             )
 
-
             Spacer(modifier = Modifier.height(8.dp))
 
             if (isSearching) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
             }
 
-                        LazyColumn(modifier = Modifier.fillMaxSize()) {
-                items(searchResults, key = { it.id + "_" + searchResults.indexOf(it) }) { track ->
-                    TrackItem(
-                        track = track,
-                        onTrackClick = { viewModel.playRemoteTrack(track) }
-                    )
+            LazyColumn(modifier = Modifier.fillMaxSize()) {
+                items(searchResults, key = { track -> track.id }) { track ->
+                    TrackItem(track = track, onTrackClick = { viewModel.playRemoteTrack(track) })
                     Divider()
                 }
             }
