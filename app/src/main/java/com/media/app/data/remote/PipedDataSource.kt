@@ -28,13 +28,15 @@ class PipedDataSource @Inject constructor(
         for (baseUrl in candidates) {
             val endpoint = "$baseUrl/search"
             try {
+                // Piped /search returns a SearchPage object; the actual results
+                // are contained in its "items" field.
                 val response = pipedApiService.search(fullUrl = endpoint, query = query)
-                val tracks = response.mapNotNull { dto ->
+                val tracks = response.items.orEmpty().mapNotNull { dto ->
                     val rawUrl = dto.url ?: return@mapNotNull null
                     val videoId = when {
-                        rawUrl.contains("watch?v=") -> rawUrl.substringAfter("watch?v=")
-                        rawUrl.startsWith("/") -> rawUrl.removePrefix("/")
-                        else -> rawUrl
+                        rawUrl.contains("watch?v=") -> rawUrl.substringAfter("watch?v=").substringBefore('&')
+                        rawUrl.startsWith("/") -> rawUrl.removePrefix("/").substringAfter("watch?v=").substringBefore('&')
+                        else -> rawUrl.substringAfterLast("/watch?v=").substringBefore('&')
                     }
 
                     if (videoId.isBlank()) return@mapNotNull null
@@ -82,9 +84,6 @@ class PipedDataSource @Inject constructor(
                     return@withContext Result.success(audioStream.url)
                 }
 
-                // A successful HTTP response with no audio stream is a content-level
-                // result, not proof that the server itself is unhealthy. Try the next
-                // instance without poisoning the current instance's cooldown state.
                 lastErrorMessage = "Ses akışı bulunamadı"
             } catch (e: Exception) {
                 lastErrorMessage = e.message ?: "Akış hatası"
