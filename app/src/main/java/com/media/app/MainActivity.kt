@@ -23,14 +23,22 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -53,18 +61,25 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    LocalLibraryScreen(viewModel = playerViewModel)
+                    MainScreen(viewModel = playerViewModel)
                 }
             }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LocalLibraryScreen(viewModel: PlayerViewModel) {
+fun MainScreen(viewModel: PlayerViewModel) {
     val context = LocalContext.current
     val playerState by viewModel.playerState.collectAsState()
     val localTracks by viewModel.localTracks.collectAsState()
+    val searchResults by viewModel.searchResults.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    val isSearching by viewModel.isSearching.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
+
+    var selectedTabIndex by remember { mutableIntStateOf(0) }
 
     val permissionToRequest = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         Manifest.permission.READ_MEDIA_AUDIO
@@ -99,13 +114,13 @@ fun LocalLibraryScreen(viewModel: PlayerViewModel) {
             .padding(16.dp)
     ) {
         Text(
-            text = "Faz 2: Yerel Kütüphane & Sync",
+            text = "MediaApp (Faz 3 Entegre)",
             style = MaterialTheme.typography.titleLarge
         )
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Mini Çalar Alanı
+        // Mini Oynatıcı Alanı
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
@@ -113,6 +128,15 @@ fun LocalLibraryScreen(viewModel: PlayerViewModel) {
             Column(modifier = Modifier.padding(12.dp)) {
                 Text(text = "Çalan: ${playerState.currentTrack?.title ?: "Yok"}")
                 Text(text = "Sanatçı: ${playerState.currentTrack?.artist ?: "-"}")
+                
+                if (errorMessage != null) {
+                    Text(
+                        text = errorMessage ?: "",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -122,30 +146,70 @@ fun LocalLibraryScreen(viewModel: PlayerViewModel) {
                     Button(onClick = { viewModel.togglePlayPause() }) {
                         Text(if (playerState.isPlaying) "Duraklat" else "Oynat")
                     }
-                    Button(onClick = { viewModel.syncTracks() }) {
-                        Text("Yeniden Tara (Sync)")
+                    if (selectedTabIndex == 0) {
+                        Button(onClick = { viewModel.syncTracks() }) {
+                            Text("Yeniden Tara")
+                        }
                     }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        Text(
-            text = "Cihazdaki Parçalar (${localTracks.size})",
-            style = MaterialTheme.typography.titleMedium
-        )
+        TabRow(selectedTabIndex = selectedTabIndex) {
+            Tab(
+                selected = selectedTabIndex == 0,
+                onClick = { selectedTabIndex = 0 },
+                text = { Text("Yerel Kütüphane") }
+            )
+            Tab(
+                selected = selectedTabIndex == 1,
+                onClick = { selectedTabIndex = 1 },
+                text = { Text("Uzak Arama (Piped)") }
+            )
+        }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        // Yerel Parça Listesi (Room Flow)
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
-            items(localTracks, key = { it.id }) { track ->
-                TrackItem(
-                    track = track,
-                    onTrackClick = { viewModel.playTrack(track) }
-                )
-                Divider()
+        if (selectedTabIndex == 0) {
+            Text(
+                text = "Cihazdaki Parçalar (${localTracks.size})",
+                style = MaterialTheme.typography.titleMedium
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            LazyColumn(modifier = Modifier.fillMaxSize()) {
+                items(localTracks, key = { it.id }) { track ->
+                    TrackItem(
+                        track = track,
+                        onTrackClick = { viewModel.playTrack(track) }
+                    )
+                    Divider()
+                }
+            }
+        } else {
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { viewModel.onSearchQueryChanged(it) },
+                label = { Text("Şarkı veya Sanatçı Ara") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            if (isSearching) {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+            }
+
+            LazyColumn(modifier = Modifier.fillMaxSize()) {
+                items(searchResults, key = { it.id }) { track ->
+                    TrackItem(
+                        track = track,
+                        onTrackClick = { viewModel.playRemoteTrack(track) }
+                    )
+                    Divider()
+                }
             }
         }
     }
