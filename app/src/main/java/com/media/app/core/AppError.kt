@@ -1,37 +1,32 @@
 package com.media.app.core
 
 sealed interface AppError {
-    // Altyapı ve Ağ Hataları (Fallback tetikleyebilir)
-    sealed interface NetworkError : AppError {
-        data class HttpError(val code: Int, val message: String) : NetworkError
-        object Timeout : NetworkError
-        object NoConnection : NetworkError
-        object Unknown : NetworkError
+
+    sealed interface PlaybackError : AppError {
+        data class InitializationFailed(val message: String) : PlaybackError
+        data class SourceNotFound(val message: String) : PlaybackError
+        data class MediaCodecError(val message: String) : PlaybackError
     }
 
-    // Veritabanı ve Yerel Depolama Hataları
     sealed interface DatabaseError : AppError {
-        data class ReadFailed(val reason: String) : DatabaseError
-        data class WriteFailed(val reason: String) : DatabaseError
+        data class ReadFailed(val message: String) : DatabaseError
+        data class WriteFailed(val message: String) : DatabaseError
     }
 
-    // Oynatıcı Hataları
-    sealed interface PlayerError : AppError {
-        data class PlaybackFailed(val code: Int, val message: String) : PlayerError
-        object SourceNotSupported : PlayerError
+    sealed interface NetworkError : AppError {
+        data class NoInternet(val message: String = "İnternet bağlantısı yok") : NetworkError
+        data class Timeout(val message: String = "Bağlantı zaman aşımına uğradı") : NetworkError
+        data class ServerError(val message: String) : NetworkError
     }
 
-    // Stream & Keşif Hataları (Manifesto Semantik Ayrımı)
-    sealed interface ResolverError : AppError {
-        // Fallback tetikleyen sistem hataları
-        object StreamResolveFailed : ResolverError
-        object SearchUnavailable : ResolverError
-        object YtDlpFailed : ResolverError
-        object PipedFailed : ResolverError
+    sealed interface RemoteSourceError : AppError {
+        data class ExtractorFailed(val message: String) : RemoteSourceError
+        data class StreamNotFound(val message: String) : RemoteSourceError
+        data class RateLimited(val message: String = "İstek limiti aşıldı") : RemoteSourceError
+    }
 
-        // Fallback zincirini ANINDA KIRAN kullanıcı/içerik hataları
-        object UserCancelled : ResolverError
-        object InvalidVideoId : ResolverError
-        object ContentUnavailable : ResolverError
+    sealed interface SyncError : AppError {
+        data class PermissionDenied(val message: String) : SyncError
+        data class StorageReadFailed(val message: String) : SyncError
     }
 }
