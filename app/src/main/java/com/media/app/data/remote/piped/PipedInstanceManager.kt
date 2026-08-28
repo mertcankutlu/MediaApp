@@ -17,15 +17,15 @@ class PipedInstanceManager @Inject constructor() {
     private val failedInstancesCooldown = ConcurrentHashMap<String, Long>()
     private val cooldownDurationMs = 5 * 60 * 1000L // 5 Dakika Cooldown
 
+    fun getInstanceCount(): Int = defaultInstances.size
+
     fun getHealthyBaseUrl(): String {
         val currentTime = System.currentTimeMillis()
 
-        // Süresi dolan cooldown'ları temizle
         failedInstancesCooldown.entries.removeIf { currentTime > it.value }
 
-        // Cooldown'da olmayan ilk sağlıklı instance'ı seç
         val healthyInstance = defaultInstances.firstOrNull { !failedInstancesCooldown.containsKey(it) }
-            ?: defaultInstances.first() // Hepsi cezalıysa ilkini dene
+            ?: defaultInstances.first()
 
         return healthyInstance
     }
