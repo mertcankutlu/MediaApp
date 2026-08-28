@@ -15,19 +15,25 @@ class PipedInstanceManager @Inject constructor() {
     )
 
     private val failedInstancesCooldown = ConcurrentHashMap<String, Long>()
-    private val cooldownDurationMs = 3 * 60 * 1000L // 3 Dakika Cooldown
+    private val cooldownDurationMs = 3 * 60 * 1000L
 
     fun getInstanceCount(): Int = defaultInstances.size
 
     fun getHealthyBaseUrl(): String {
-        val currentTime = System.currentTimeMillis()
+        val now = System.currentTimeMillis()
 
-        failedInstancesCooldown.entries.removeIf { currentTime > it.value }
+        // Avoid ConcurrentHashMap.entries.removeIf() here. Using the map's
+        // conditional remove keeps this compatible with older Android runtimes
+        // and is safe if another coroutine reports a failure concurrently.
+        failedInstancesCooldown.forEach { (url, expiresAt) ->
+            if (now >= expiresAt) {
+                failedInstancesCooldown.remove(url, expiresAt)
+            }
+        }
 
-        val healthyInstance = defaultInstances.firstOrNull { !failedInstancesCooldown.containsKey(it) }
-            ?: defaultInstances.first()
-
-        return healthyInstance
+        return defaultInstances.firstOrNull { url ->
+            !failedInstancesCooldown.containsKey(url)
+        } ?: defaultInstances.first()
     }
 
     fun reportFailure(baseUrl: String) {
