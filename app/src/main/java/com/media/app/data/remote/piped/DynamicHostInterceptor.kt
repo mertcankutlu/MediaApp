@@ -14,28 +14,44 @@ class DynamicHostInterceptor @Inject constructor(
 
     @Throws(IOException::class)
     override fun intercept(chain: Interceptor.Chain): Response {
-        var request = chain.request()
-        val currentHost = instanceManager.getHealthyBaseUrl().toHttpUrlOrNull()
+        val originalRequest = chain.request()
+        val totalAttempts = instanceManager.getInstanceCount()
+        var lastException: IOException? = null
 
-        if (currentHost != null) {
-            val newUrl = request.url.newBuilder()
+        for (attempt in 0 until totalAttempts) {
+            val currentBaseUrl = instanceManager.getHealthyBaseUrl()
+            val currentHost = currentBaseUrl.toHttpUrlOrNull() ?: continue
+
+            val newUrl = originalRequest.url.newBuilder()
                 .scheme(currentHost.scheme)
                 .host(currentHost.host)
                 .port(currentHost.port)
                 .build()
 
-            request = request.newBuilder().url(newUrl).build()
+            val newRequest = originalRequest.newBuilder().url(newUrl).build()
+
+            try {
+                val response = chain.proceed(newRequest)
+                
+                if (response.isSuccessful) {
+                    return response
+                }
+
+                // 429 (Rate Limit) veya 5xx sunucu hatasında instance'ı cezalandır ve bir sonrakini dene
+                if (response.code == 429 || response.code in 500..599) {
+                    response.close()
+                    instanceManager.reportFailure(currentBaseUrl)
+                    continue
+                }
+
+                // 4xx istemci hatalarında retry yapmadan doğrudan dön
+                return response
+            } catch (e: IOException) {
+                instanceManager.reportFailure(currentBaseUrl)
+                lastException = e
+            }
         }
 
-        try {
-            val response = chain.proceed(request)
-            if (!response.isSuccessful && response.code in 500..599) {
-                currentHost?.let { instanceManager.reportFailure("${it.scheme}://${it.host}") }
-            }
-            return response
-        } catch (e: Exception) {
-            currentHost?.let { instanceManager.reportFailure("${it.scheme}://${it.host}") }
-            throw e
-        }
+        throw lastException ?: IOException("Tüm Piped instance'ları yanıt vermedi.")
     }
 }
