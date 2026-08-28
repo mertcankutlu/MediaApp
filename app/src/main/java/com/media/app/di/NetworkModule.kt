@@ -23,8 +23,8 @@ object NetworkModule {
     ): OkHttpClient {
         return OkHttpClient.Builder()
             .addInterceptor(dynamicHostInterceptor)
-            .connectTimeout(10, TimeUnit.SECONDS)
-            .readTimeout(10, TimeUnit.SECONDS)
+            .connectTimeout(4, TimeUnit.SECONDS)
+            .readTimeout(4, TimeUnit.SECONDS)
             .build()
     }
 
@@ -32,7 +32,7 @@ object NetworkModule {
     @Singleton
     fun providePipedApiService(okHttpClient: OkHttpClient): PipedApiService {
         return Retrofit.Builder()
-            .baseUrl("https://pipedapi.kavin.rocks/") // Interceptor tarafından dinamik ezilir
+            .baseUrl("https://pipedapi.kavin.rocks/")
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
