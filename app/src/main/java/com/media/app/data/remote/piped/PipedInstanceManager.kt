@@ -9,13 +9,13 @@ class PipedInstanceManager @Inject constructor() {
 
     private val defaultInstances = listOf(
         "https://pipedapi.kavin.rocks",
-        "https://api.piped.privacy.com.de",
-        "https://piped-api.lunar.icu",
-        "https://api.piped.yt"
+        "https://api.piped.privacydev.net",
+        "https://pipedapi.leptons.xyz",
+        "https://piped-api.lunar.icu"
     )
 
     private val failedInstancesCooldown = ConcurrentHashMap<String, Long>()
-    private val cooldownDurationMs = 5 * 60 * 1000L // 5 Dakika Cooldown
+    private val cooldownDurationMs = 3 * 60 * 1000L // 3 Dakika Cooldown
 
     fun getInstanceCount(): Int = defaultInstances.size
 
