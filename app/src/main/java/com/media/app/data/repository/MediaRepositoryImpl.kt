@@ -5,6 +5,8 @@ import com.media.app.core.Result
 import com.media.app.data.local.MediaDao
 import com.media.app.data.local.MediaEntity
 import com.media.app.data.local.MediaSyncEngine
+import com.media.app.data.remote.PipedDataSource
+import com.media.app.data.remote.YtDlpResolver
 import com.media.app.domain.model.MediaTrack
 import com.media.app.domain.repository.MediaRepository
 import kotlinx.coroutines.flow.Flow
@@ -15,7 +17,9 @@ import javax.inject.Singleton
 @Singleton
 class MediaRepositoryImpl @Inject constructor(
     private val mediaDao: MediaDao,
-    private val syncEngine: MediaSyncEngine
+    private val syncEngine: MediaSyncEngine,
+    private val pipedDataSource: PipedDataSource,
+    private val ytDlpResolver: YtDlpResolver
 ) : MediaRepository {
 
     override fun getLocalMedia(): Flow<List<MediaTrack>> {
@@ -45,5 +49,20 @@ class MediaRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             Result.failure(AppError.DatabaseError.WriteFailed(e.message ?: "Senkronizasyon hatası"))
         }
+    }
+
+    override suspend fun searchRemoteTracks(query: String): Result<List<MediaTrack>> {
+        return pipedDataSource.searchTracks(query)
+    }
+
+    override suspend fun resolveStreamUrl(videoId: String): Result<String> {
+        // 1. Birincil Deneme: Piped API (Hafif ve hızlı)
+        val pipedResult = pipedDataSource.resolveAudioUrl(videoId)
+        if (pipedResult is Result.Success) {
+            return pipedResult
+        }
+
+        // 2. İkincil Deneme (Fallback): yt-dlp Motoru
+        return ytDlpResolver.resolveStreamUrl(videoId)
     }
 }
