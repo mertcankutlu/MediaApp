@@ -13,6 +13,13 @@ interface PipedApiService {
         @Query("filter") filter: String = "music_songs"
     ): List<PipedSearchResultDto>
 
+    @GET("nextpage/search")
+    suspend fun searchNextPage(
+        @Query("q") query: String,
+        @Query("nextpage") nextPage: String,
+        @Query("filter") filter: String = "music_songs"
+    ): List<PipedSearchResultDto>
+
     @GET("streams")
     suspend fun getStreams(
         @Query("v") videoId: String
