@@ -1,7 +1,6 @@
 package com.media.app.di
 
 import com.media.app.data.remote.api.PipedApiService
-import com.media.app.data.remote.piped.DynamicHostInterceptor
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -18,13 +17,10 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(
-        dynamicHostInterceptor: DynamicHostInterceptor
-    ): OkHttpClient {
+    fun provideOkHttpClient(): OkHttpClient {
         return OkHttpClient.Builder()
-            .addInterceptor(dynamicHostInterceptor)
-            .connectTimeout(4, TimeUnit.SECONDS)
-            .readTimeout(4, TimeUnit.SECONDS)
+            .connectTimeout(5, TimeUnit.SECONDS)
+            .readTimeout(5, TimeUnit.SECONDS)
             .build()
     }
 
@@ -32,7 +28,7 @@ object NetworkModule {
     @Singleton
     fun providePipedApiService(okHttpClient: OkHttpClient): PipedApiService {
         return Retrofit.Builder()
-            .baseUrl("https://pipedapi.kavin.rocks/")
+            .baseUrl("https://pipedapi.kavin.rocks/") // Retrofit için dummy base, çağrılarda @Url kullanılır
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
